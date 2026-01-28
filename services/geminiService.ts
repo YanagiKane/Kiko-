@@ -174,9 +174,8 @@ export const enhanceImage = async (
   try {
     onStatusUpdate?.("Initializing...");
     
-    // User provided API Key to bypass rate limits on primary account
-    const API_KEY = 'AIzaSyAudKg9wv1Lzh7O-ENOYKIwpmqOEQ7rPIs';
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    // Using process.env.API_KEY strictly as per guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     // Clean base64 string if present
     const cleanBase64 = imageBase64 ? imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '') : '';

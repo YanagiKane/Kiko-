@@ -13,7 +13,11 @@ export enum EnhancementType {
   REMOVE_WATERMARK = 'Watermark Remover',
   VARIATION = 'Inspire / Variant',
   EDIT = 'Magic Editor',
-  GENERATION = 'Text to Image'
+  GENERATION = 'Text to Image',
+  // New Looks
+  LOOK_BW = 'Cinematic B&W',
+  LOOK_DARK = 'Dark Modern',
+  LOOK_REALISM = 'Cinematic Realism'
 }
 
 export enum AspectRatio {
@@ -31,7 +35,7 @@ export interface EnhancementConfig {
   customPrompt?: string;
   negativePrompt?: string;
   referenceImage?: string; // Base64 of the reference image
-  maskImage?: string; // Base64 of the mask image (for inpainting)
+  maskImage?: string; // Base64 of the mask image
   aspectRatio: AspectRatio;
   customWidth?: number;
   customHeight?: number;

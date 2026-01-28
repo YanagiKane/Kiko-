@@ -84,7 +84,7 @@ const ComparisonView: React.FC<Props> = ({ beforeImage, afterImages, beforeDims,
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = activeAfterImage;
-    link.download = `lynx-enhanced-${Date.now()}.png`;
+    link.download = `kiko-enhanced-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -152,7 +152,7 @@ const ComparisonView: React.FC<Props> = ({ beforeImage, afterImages, beforeDims,
             </div>
             <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-30 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity max-w-[40%] text-right flex flex-col items-end gap-1">
                 {afterDims && (
-                    <div className="bg-apple-blue/90 backdrop-blur-md text-white text-[9px] sm:text-[10px] leading-tight font-medium px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-full shadow-lg border border-white/10 whitespace-nowrap truncate inline-block">
+                    <div className="bg-blue-600/90 backdrop-blur-md text-white text-[9px] sm:text-[10px] leading-tight font-medium px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-full shadow-lg border border-white/10 whitespace-nowrap truncate inline-block">
                     <span className="hidden sm:inline">Enhanced: </span>{afterDims.w}×{afterDims.h}
                     </div>
                 )}
@@ -165,7 +165,7 @@ const ComparisonView: React.FC<Props> = ({ beforeImage, afterImages, beforeDims,
                 style={{ left: `${sliderPosition}%` }}
                 >
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center border border-black/10">
-                        <ArrowLeftRight className="w-4 h-4 text-apple-shark" />
+                        <ArrowLeftRight className="w-4 h-4 text-black" />
                     </div>
                 </div>
             )}
@@ -179,7 +179,7 @@ const ComparisonView: React.FC<Props> = ({ beforeImage, afterImages, beforeDims,
                 <button 
                   key={idx}
                   onClick={() => setSelectedIndex(idx)}
-                  className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${selectedIndex === idx ? 'border-apple-blue ring-2 ring-apple-blue/30' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                  className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${selectedIndex === idx ? 'border-blue-600 ring-2 ring-blue-600/30' : 'border-transparent opacity-70 hover:opacity-100'}`}
                 >
                     <img src={img} className="w-full h-full object-cover" alt={`Variant ${idx+1}`} />
                     <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[8px] px-1 rounded-tl-md">{idx + 1}</span>
@@ -194,10 +194,10 @@ const ComparisonView: React.FC<Props> = ({ beforeImage, afterImages, beforeDims,
             <button onClick={onDiscard} className="px-4 py-2 rounded-full bg-white text-red-500 text-sm font-medium shadow-lg hover:bg-red-50 transition-colors flex items-center gap-2">
                 <Trash2 className="w-3.5 h-3.5" /> Discard
             </button>
-            <button onClick={handleDownload} className="px-4 py-2 rounded-full bg-white text-apple-shark text-sm font-medium shadow-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
+            <button onClick={handleDownload} className="px-4 py-2 rounded-full bg-white text-gray-800 text-sm font-medium shadow-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
                 <Download className="w-3.5 h-3.5" /> Download
             </button>
-            <button onClick={() => onApply(activeAfterImage)} className="px-4 py-2 rounded-full bg-apple-blue text-white text-sm font-medium shadow-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+            <button onClick={() => onApply(activeAfterImage)} className="px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-medium shadow-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
                 <Check className="w-3.5 h-3.5" /> Done
             </button>
          </div>

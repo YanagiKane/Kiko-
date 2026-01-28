@@ -1,23 +1,6 @@
 import React, { useState } from 'react';
-import { X, Sun, Moon, Monitor, FileCode } from 'lucide-react';
+import { Menu, X, Home, Sparkles, LayoutGrid, Monitor, Moon, Sun } from 'lucide-react';
 import { useTheme } from './ThemeContext';
-
-const TwoLineMenu = ({ className }: { className?: string }) => (
-  <svg 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <line x1="4" x2="20" y1="9" y2="9" />
-    <line x1="4" x2="20" y1="15" y2="15" />
-  </svg>
-);
 
 interface HeaderProps {
     onNavigate: (page: string) => void;
@@ -25,6 +8,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeLink, setActiveLink] = useState('home');
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
@@ -33,112 +17,127 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
     else setTheme('system');
   };
 
-  const isDark = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-  const handleNavClick = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    onNavigate(id);
-    setIsMenuOpen(false);
-  };
-
   const getThemeIcon = () => {
-    if (theme === 'system') return <Monitor size={16} className="fill-current" />;
-    if (theme === 'dark') return <Moon size={16} className="fill-current" />;
-    return <Sun size={16} className="fill-current" />;
+    if (theme === 'system') return <Monitor size={18} />;
+    if (theme === 'dark') return <Moon size={18} />;
+    return <Sun size={18} />;
   };
+
+  const handleLinkClick = (id: string) => {
+    setActiveLink(id);
+    setIsMenuOpen(false);
+    onNavigate(id === 'home' ? 'top' : id);
+  };
+
+  const navLinks = [
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'overview', label: 'Overview', icon: LayoutGrid },
+  ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[60] px-4 py-4 flex justify-center">
-      <div className="w-full max-w-5xl">
-        {/* 
-            Glassmorphic container based on Mobbin reference.
-        */}
-        <div className={`
-            relative backdrop-blur-xl 
-            bg-gray-200/80 dark:bg-black/70 
-            border border-white/40 dark:border-white/10 
-            shadow-none dark:shadow-xl
-            rounded-[2rem]
-            transition-all duration-300 ease-in-out
-        `}>
-          <div className="flex items-center justify-between px-6 py-3">
-            {/* Logo */}
-            <div className="flex items-center">
-              <a href="#" onClick={(e) => handleNavClick(e, 'top')} className="text-xl font-black tracking-tight font-syne group">
-                <span className="bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
-                  LYNX
-                </span>
-              </a>
-            </div>
+    <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] w-[95%] max-w-5xl">
+      <div className="bg-white/20 backdrop-blur-lg border border-white/30 rounded-full shadow-2xl px-6 py-3 flex items-center justify-between transition-all duration-300">
+        
+        {/* Logo */}
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleLinkClick('home')}>
+          <span className="text-white font-black text-2xl tracking-tight font-syne drop-shadow-md">Kiko</span>
+        </div>
 
-            {/* Desktop Menu - Hidden on mobile */}
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#overview" onClick={(e) => handleNavClick(e, 'overview')} className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors">
-                Overview
-              </a>
-              <a href="#docs" onClick={(e) => handleNavClick(e, 'docs')} className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors flex items-center gap-1.5">
-                <FileCode className="w-3.5 h-3.5" />
-                Documentation
-              </a>
-              
-              <button 
+        {/* Desktop Navigation Pills */}
+        <div className="hidden lg:flex items-center gap-2 bg-black/10 rounded-full p-1.5 backdrop-blur-sm">
+          {navLinks.map((link) => {
+            const Icon = link.icon;
+            const isActive = activeLink === link.id;
+            
+            return (
+              <button
+                key={link.id}
+                onClick={() => handleLinkClick(link.id)}
+                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all duration-300 font-bold text-sm ${
+                  isActive 
+                    ? 'bg-white text-blue-600 shadow-md scale-105' 
+                    : 'text-white hover:bg-white/20'
+                }`}
+              >
+                <Icon size={16} />
+                {link.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right Actions */}
+        <div className="hidden lg:flex items-center gap-3">
+          <button 
+            onClick={toggleTheme}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors border border-white/10"
+            title="Toggle Theme"
+          >
+             {getThemeIcon()}
+          </button>
+
+          <button 
+            onClick={() => handleLinkClick('home')}
+            className="bg-white text-blue-600 px-6 py-2.5 rounded-full hover:bg-blue-50 transition-all duration-300 font-black text-xs flex items-center gap-2 shadow-lg tracking-wide uppercase"
+          >
+            <Sparkles size={16} />
+            Start Creating
+          </button>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <div className="flex items-center gap-2 lg:hidden">
+            <button 
                 onClick={toggleTheme}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100/50 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
-              >
-                 {getThemeIcon()}
-              </button>
-
-              <button 
-                onClick={() => onNavigate('top')}
-                className="bg-black dark:bg-white text-white dark:text-black px-5 py-2 rounded-full text-xs font-bold hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
-              >
-                Start Enhancing
-              </button>
-            </div>
-
-            {/* Mobile Actions & Menu Button */}
-            <div className="flex items-center gap-3 md:hidden">
-                 <button 
-                    onClick={toggleTheme}
-                    className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                >
-                    {isDark ? <Moon size={18} /> : <Sun size={18} />}
-                </button>
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  {isMenuOpen ? (
-                    <X className="w-6 h-6 text-gray-900 dark:text-white" />
-                  ) : (
-                    <TwoLineMenu className="w-6 h-6 text-gray-900 dark:text-white" />
-                  )}
-                </button>
-            </div>
-          </div>
-
-          {/* Mobile Menu Dropdown */}
-          {isMenuOpen && (
-            <div className="md:hidden border-t border-gray-200/10 dark:border-white/5">
-              <div className="px-6 py-4 space-y-4 animate-fade-in">
-                <a href="#overview" onClick={(e) => handleNavClick(e, 'overview')} className="block text-lg font-medium text-gray-700 dark:text-gray-200 hover:text-black dark:hover:text-white transition-colors">
-                  Overview
-                </a>
-                <a href="#docs" onClick={(e) => handleNavClick(e, 'docs')} className="block text-lg font-medium text-gray-700 dark:text-gray-200 hover:text-black dark:hover:text-white transition-colors flex items-center gap-2">
-                  <FileCode className="w-5 h-5" />
-                  Documentation
-                </a>
-                <button 
-                  onClick={() => { onNavigate('top'); setIsMenuOpen(false); }}
-                  className="w-full bg-black dark:bg-white text-white dark:text-black px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
-                >
-                  Start Enhancing
-                </button>
-              </div>
-            </div>
-          )}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+                {getThemeIcon()}
+            </button>
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-white p-2.5 rounded-full hover:bg-white/20 transition-all"
+            >
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
         </div>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      {isMenuOpen && (
+        <div className="lg:hidden mt-3 bg-white/20 backdrop-blur-xl border border-white/30 rounded-[32px] shadow-2xl p-4 animate-fade-in">
+          <div className="space-y-2">
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = activeLink === link.id;
+              
+              return (
+                <button
+                  key={link.id}
+                  onClick={() => handleLinkClick(link.id)}
+                  className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all duration-300 font-bold ${
+                    isActive 
+                      ? 'bg-white text-blue-600 shadow-lg' 
+                      : 'text-white hover:bg-white/10'
+                  }`}
+                >
+                  <Icon size={20} />
+                  {link.label}
+                </button>
+              );
+            })}
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-white/20">
+            <button 
+                onClick={() => handleLinkClick('home')}
+                className="w-full bg-white text-blue-600 px-5 py-4 rounded-2xl hover:bg-gray-50 transition-all duration-300 font-black flex items-center justify-center gap-2 shadow-lg uppercase tracking-wide"
+            >
+              <Sparkles size={20} />
+              Start Creating
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

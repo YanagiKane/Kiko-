@@ -1,3 +1,4 @@
+
 import { EnhancementType, AspectRatio } from './types';
 
 export const ENHANCEMENT_PROMPTS: Record<EnhancementType, string> = {
@@ -14,7 +15,12 @@ export const ENHANCEMENT_PROMPTS: Record<EnhancementType, string> = {
   [EnhancementType.REMOVE_WATERMARK]: "Remove watermarks: Aggressively detect and remove all semi-transparent text, copyright patterns, digital stamps, and logos overlaying the image. Inpaint the obscured pixels to match the surrounding image texture seamlessly.",
   [EnhancementType.VARIATION]: "Create a new image inspired by this one, maintaining a similar artistic style, theme, and color scheme, but producing an original and distinct alternative. Do not just copy the image; reimagine it with a fresh composition.",
   [EnhancementType.EDIT]: "Execute the user's specific editing instruction precisely on the PROVIDED INPUT IMAGE. Modify ONLY what is requested (e.g., change object, change background, add element). Preserve the rest of the image's structure, lighting, and style exactly.",
-  [EnhancementType.GENERATION]: "Generate a high-quality, photorealistic image based on the user's description. Pay close attention to lighting, texture, and composition."
+  [EnhancementType.GENERATION]: "Generate a high-quality, photorealistic image based on the user's description. Pay close attention to lighting, texture, and composition.",
+  
+  // New Looks
+  [EnhancementType.LOOK_BW]: "Cinematic black-and-white photo, full-frame camera, 85mm lens, f/1.8, shallow depth of field, low-key dramatic lighting, strong contrast, overhead and rim lighting, soft background bokeh, ISO 1000 with subtle film grain, moody editorial look, Ilford HP5 / Kodak Tri-X style, dark modern atmosphere.",
+  [EnhancementType.LOOK_DARK]: "Cinematic full-frame camera, 85mm lens, f/1.8, shallow depth of field, low-key dramatic lighting, strong contrast, overhead and rim lighting, soft background bokeh, ISO 1000 with subtle film grain, moody editorial look, dark modern atmosphere.",
+  [EnhancementType.LOOK_REALISM]: "Cinematic, moody, realism with soft dramatic lighting and strong contrast. Shallow depth of field with a subtle background blur, natural color grading leaning toward cool neutrals, and a film-like texture. Balanced symmetry and leading lines create a focused, editorial feel. Realistic skin tones, soft highlights, gentle shadows, and a modern, high-end photography."
 };
 
 export const ASPECT_RATIOS: { label: string; value: AspectRatio; description?: string }[] = [

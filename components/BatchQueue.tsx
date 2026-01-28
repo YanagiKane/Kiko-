@@ -14,16 +14,27 @@ interface Props {
 const BatchQueue: React.FC<Props> = ({ items, onRemove, onClear, isProcessing, onHome, onAddMore }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Calculate stats
+  const completed = items.filter(i => i.status === 'completed').length;
+  const progress = items.length > 0 ? (completed / items.length) * 100 : 0;
+
   return (
     <div className="h-full flex flex-col bg-transparent">
       {/* Header */}
-      <div className="px-6 py-3 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
-         <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Queue ({items.length})</h2>
+      <div className="px-6 py-3 border-b border-gray-200/50 dark:border-white/5 flex items-center justify-between">
+         <div className="flex flex-col">
+            <h2 className="text-sm font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Queue ({items.length})</h2>
+            {isProcessing && (
+                <div className="w-24 h-1 bg-gray-200 dark:bg-white/10 rounded-full mt-1 overflow-hidden">
+                    <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                </div>
+            )}
+         </div>
          <div className="flex gap-2">
-            <button onClick={() => fileInputRef.current?.click()} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-apple-blue font-medium text-xs flex items-center gap-1.5 transition-colors">
+            <button onClick={() => fileInputRef.current?.click()} className="p-1.5 hover:bg-white/10 rounded-lg text-blue-600 dark:text-blue-400 font-medium text-xs flex items-center gap-1.5 transition-colors">
                <Plus className="w-3.5 h-3.5" /> Add
             </button>
-            <button onClick={onClear} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-red-400 hover:text-red-500 font-medium text-xs transition-colors">
+            <button onClick={onClear} className="p-1.5 hover:bg-white/10 rounded-lg text-red-500 hover:text-red-600 font-medium text-xs transition-colors">
                Clear All
             </button>
          </div>
@@ -31,15 +42,15 @@ const BatchQueue: React.FC<Props> = ({ items, onRemove, onClear, isProcessing, o
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-0">
          {items.length === 0 ? (
-             <div className="h-64 flex flex-col items-center justify-center text-gray-400">
+             <div className="h-full flex flex-col items-center justify-center text-gray-500">
                  <p className="text-sm">No images in queue</p>
              </div>
          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-20">
                 {items.map(item => (
-                <div key={item.id} className="relative group bg-gray-50 dark:bg-black/40 rounded-2xl overflow-hidden aspect-square border border-gray-100 dark:border-white/5 hover:border-apple-blue/50 transition-all shadow-sm">
+                <div key={item.id} className="relative group bg-white/40 dark:bg-black/40 rounded-2xl overflow-hidden aspect-square border border-white/50 dark:border-white/5 hover:border-blue-500/50 transition-all shadow-sm">
                     {/* Image */}
                     <div className="w-full h-full flex items-center justify-center p-2">
                         <img src={item.result || item.preview} className="w-full h-full object-contain rounded-lg" alt="" />
@@ -56,12 +67,12 @@ const BatchQueue: React.FC<Props> = ({ items, onRemove, onClear, isProcessing, o
                         </div>
                         
                         {/* Actions Slide Up */}
-                        <div className="bg-white/95 dark:bg-[#1D1D1F]/95 backdrop-blur-md p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 flex justify-between items-center gap-2 pointer-events-auto shadow-lg">
-                            <span className="text-[10px] truncate text-gray-600 dark:text-gray-300 max-w-[60px] font-medium">{item.file.name}</span>
+                        <div className="bg-white/90 dark:bg-[#1D1D1F]/95 backdrop-blur-md p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 flex justify-between items-center gap-2 pointer-events-auto shadow-lg">
+                            <span className="text-[10px] truncate text-gray-800 dark:text-gray-300 max-w-[60px] font-medium">{item.file.name}</span>
                             {item.status === 'completed' ? (
-                                <a href={item.result} download={`enhanced-${item.file.name}`} className="p-1.5 bg-gray-100 dark:bg-white/10 rounded-lg text-apple-blue hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"><Download className="w-3.5 h-3.5" /></a>
+                                <a href={item.result} download={`enhanced-${item.file.name}`} className="p-1.5 bg-gray-100 dark:bg-white/10 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"><Download className="w-3.5 h-3.5" /></a>
                             ) : (
-                                <button onClick={() => onRemove(item.id)} className="p-1.5 bg-gray-100 dark:bg-white/10 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => onRemove(item.id)} className="p-1.5 bg-gray-100 dark:bg-white/10 rounded-lg text-gray-500 dark:text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                             )}
                         </div>
                     </div>
@@ -71,7 +82,7 @@ const BatchQueue: React.FC<Props> = ({ items, onRemove, onClear, isProcessing, o
                 {/* Add Button Tile */}
                 <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 dark:border-white/10 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-apple-blue hover:border-apple-blue/50 hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
+                className="aspect-square rounded-2xl border-2 border-dashed border-gray-300 dark:border-white/10 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-blue-600 hover:border-blue-500/50 hover:bg-white/5 transition-all"
                 >
                 <Plus className="w-6 h-6" />
                 <span className="text-xs font-bold uppercase tracking-wide">Add</span>

@@ -4,19 +4,26 @@ import Footer from './components/Footer';
 import ImageUploader from './components/ImageUploader';
 import EnhancementControls from './components/EnhancementControls';
 import ComparisonView from './components/ComparisonView';
-import MaskEditor from './components/MaskEditor';
 import BatchQueue from './components/BatchQueue';
 import SplitText from './components/SplitText';
-import Documentation from './components/Documentation';
 import { ThemeProvider } from './components/ThemeContext';
 import { EnhancementConfig, EnhancementType, AspectRatio, ProcessedImage, BatchItem } from './types';
 import { enhanceImage } from './services/geminiService';
 import { enhanceWithFal } from './services/falService';
 import { enhanceWithCloudinary } from './services/cloudinaryService';
-import { AlertCircle, X, Home, Download, MoreHorizontal, ArrowLeft, Image as ImageIcon, Trash2, Wand2, Sparkles, Upload, Hash, Layout, Monitor, Instagram, Smartphone, Youtube } from 'lucide-react';
+import { AlertCircle, X, Home, Download, MoreHorizontal, ArrowLeft, Image as ImageIcon, Trash2, Wand2, Sparkles, Upload, Hash, Layout, Monitor, Instagram, Smartphone, Youtube, RefreshCcw, Zap, Layers } from 'lucide-react';
+
+// Taglines for Kiko
+const TAGLINES = [
+    { title: "Refine reality.", subtitle: "Instantly." },
+    { title: "Dream deeper.", subtitle: "Create." },
+    { title: "Illuminate.", subtitle: "Your Vision." },
+    { title: "Kiko", subtitle: "Shining Light." },
+    { title: "Reimagine.", subtitle: "Everything." }
+];
 
 const AppContent: React.FC = () => {
-  const [mode, setMode] = useState<'landing' | 'single' | 'batch' | 'docs'>('landing');
+  const [mode, setMode] = useState<'landing' | 'single' | 'batch'>('landing');
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [processedResult, setProcessedResult] = useState<ProcessedImage | null>(null);
@@ -30,13 +37,17 @@ const AppContent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [isMaskingMode, setIsMaskingMode] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+
+  // Tagline State
+  const [tagline, setTagline] = useState(TAGLINES[0]);
 
   // Landing Page State
   const [landingTab, setLandingTab] = useState<'enhance' | 'generate'>('enhance');
   const [genPrompt, setGenPrompt] = useState('');
   const [genReference, setGenReference] = useState<string | undefined>(undefined);
   const genRefInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   const [config, setConfig] = useState<EnhancementConfig>({
     types: [EnhancementType.GENERAL],
@@ -44,6 +55,12 @@ const AppContent: React.FC = () => {
     imageCount: 1,
     model: 'gemini-2.5-flash-image'
   });
+
+  // Randomize tagline on mount
+  useEffect(() => {
+    const random = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
+    setTagline(random);
+  }, []);
 
   // Click outside to close menu
   useEffect(() => {
@@ -56,12 +73,20 @@ const AppContent: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const getRatioIcon = (ratio: AspectRatio) => {
+    switch(ratio) {
+        case AspectRatio.SQUARE: return <Instagram className="w-3 h-3" />;
+        case AspectRatio.TALL: return <Smartphone className="w-3 h-3" />;
+        case AspectRatio.WIDE: return <Youtube className="w-3 h-3" />;
+        case AspectRatio.PORTRAIT: return <Layout className="w-3 h-3" />;
+        case AspectRatio.LANDSCAPE: return <Monitor className="w-3 h-3" />;
+        default: return <Layout className="w-3 h-3" />;
+    }
+  };
+
   const handleNavigate = (page: string) => {
-      if (page === 'docs') {
-          setMode('docs');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else if (page === 'top' || page === 'overview') {
-          if (mode === 'docs') setMode('landing');
+      if (page === 'top' || page === 'overview') {
+          setMode('landing');
           window.scrollTo({ top: 0, behavior: 'smooth' });
       }
   };
@@ -82,13 +107,29 @@ const AppContent: React.FC = () => {
     setError(null);
     setMode('single');
     setActiveImageDims(null);
-    setIsMaskingMode(false);
 
     if (initialPrompt && initialPrompt.trim().length > 0) {
         setConfig(prev => ({ ...prev, types: [EnhancementType.EDIT], customPrompt: initialPrompt }));
     } else {
         setConfig(prev => ({ ...prev, types: [EnhancementType.GENERAL], customPrompt: '' }));
     }
+  };
+
+  // Replace active image
+  const handleReplaceImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+              if (ev.target?.result) {
+                  handleImageSelect(ev.target.result as string);
+                  setShowMenu(false);
+              }
+          };
+          reader.readAsDataURL(file);
+      }
+      // Reset input
+      if (replaceInputRef.current) replaceInputRef.current.value = '';
   };
 
   const handleBatchSelect = async (files: File[]) => {
@@ -191,7 +232,6 @@ const AppContent: React.FC = () => {
              }
              
              setMode('single');
-             setIsMaskingMode(false);
              
              // Pre-configure editor for next steps
              setConfig(prev => ({ 
@@ -272,8 +312,6 @@ const AppContent: React.FC = () => {
         enhancedDims,
         processingTime
       });
-      // Reset masking mode
-      setIsMaskingMode(false);
     } catch (err: any) {
       if (!cancelSingleRef.current) {
         console.error(err);
@@ -379,21 +417,28 @@ const AppContent: React.FC = () => {
       setHistoryIndex(newHistory.length - 1);
       setProcessedResult(null);
       setActiveImageDims(null);
-      // Clear mask when applying new state
-      setConfig(prev => ({ ...prev, maskImage: undefined }));
-      setIsMaskingMode(false);
     }
   };
 
-  const handleDiscard = () => setProcessedResult(null);
+  const handleDiscard = () => {
+      setShowDiscardDialog(false);
+      setProcessedResult(null);
+  }
+  
+  const requestDiscard = () => {
+      setShowDiscardDialog(true);
+  };
+  
+  const confirmDiscardProject = () => {
+      handleReset();
+      setShowDiscardDialog(false);
+  };
 
   const handleUndo = () => {
     if (historyIndex > 0) {
       setHistoryIndex(historyIndex - 1);
       setProcessedResult(null);
       setActiveImageDims(null);
-      setConfig(prev => ({ ...prev, maskImage: undefined }));
-      setIsMaskingMode(false);
     }
   };
 
@@ -402,8 +447,6 @@ const AppContent: React.FC = () => {
       setHistoryIndex(historyIndex + 1);
       setProcessedResult(null);
       setActiveImageDims(null);
-      setConfig(prev => ({ ...prev, maskImage: undefined }));
-      setIsMaskingMode(false);
     }
   };
 
@@ -417,7 +460,6 @@ const AppContent: React.FC = () => {
     setActiveImageDims(null);
     setGenPrompt('');
     setGenReference(undefined);
-    setIsMaskingMode(false);
     setConfig({
         types: [EnhancementType.GENERAL],
         aspectRatio: AspectRatio.AUTO,
@@ -431,81 +473,55 @@ const AppContent: React.FC = () => {
       if (!active) return;
       const link = document.createElement('a');
       link.href = active;
-      link.download = `lynx-original-${Date.now()}.png`;
+      link.download = `kiko-original-${Date.now()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       setShowMenu(false);
   };
 
-  const handleMaskChange = (mask: string | undefined) => {
-      setConfig(prev => ({ ...prev, maskImage: mask }));
-  };
-
   const activeImage = historyIndex >= 0 ? history[historyIndex] : null;
-  const isMagicEdit = config.types.includes(EnhancementType.EDIT);
-
-  // Helper for ratio icons in generator
-  const getRatioIcon = (ratio: AspectRatio) => {
-      switch(ratio) {
-          case AspectRatio.SQUARE: return <Instagram className="w-3.5 h-3.5" />;
-          case AspectRatio.TALL: return <Smartphone className="w-3.5 h-3.5" />;
-          case AspectRatio.WIDE: return <Youtube className="w-3.5 h-3.5" />;
-          case AspectRatio.PORTRAIT: return <Layout className="w-3.5 h-3.5" />;
-          case AspectRatio.LANDSCAPE: return <Monitor className="w-3.5 h-3.5" />;
-          default: return <Layout className="w-3.5 h-3.5" />;
-      }
-  };
 
   return (
-    <div className="min-h-screen relative font-sans transition-colors duration-300">
+    <div className="min-h-screen relative font-sans transition-colors duration-300 text-gray-900 dark:text-white pb-20">
       
-      {/* Grid Background */}
-      <div className="fixed inset-0 z-0">
-         <div className="absolute inset-0 bg-white dark:bg-black bg-grid-pattern opacity-100" />
-         <div className="pointer-events-none absolute inset-0 bg-white dark:bg-black bg-fade-radial" />
-      </div>
-
       <div className="relative z-10 min-h-screen flex flex-col">
         <Header onNavigate={handleNavigate} />
 
-        <main className="flex-grow pt-24 px-4 pb-12">
+        <main className="flex-grow pt-40 px-4 pb-12">
           
-          {mode === 'docs' && (
-             <Documentation />
-          )}
-
           {mode === 'landing' && (
             // --- LANDING STATE ---
-            <div className="flex flex-col justify-center items-center" id="top">
-              <div className="max-w-4xl w-full text-center mt-12">
+            <div className="flex flex-col lg:flex-row justify-center items-start lg:gap-12" id="top">
+              {/* Left Side: Hero & Uploader */}
+              <div className="max-w-4xl w-full text-center mt-6 lg:mt-12 flex-1">
                 
-                <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-apple-shark dark:text-white mb-6 leading-tight">
+                <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white drop-shadow-sm mb-6 leading-tight font-sans">
                   <SplitText 
-                    text="Refine reality." 
+                    text={tagline.title} 
                     className="inline-block"
                     delay={40}
                   />
                   <br className="hidden md:inline" />
                   <SplitText 
-                    text="Instantly." 
-                    className="inline-block text-gray-400 dark:text-gray-600"
+                    text={tagline.subtitle} 
+                    className="inline-block text-white/80"
                     delay={40}
                   />
                 </h1>
                 
-                <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 mb-10 max-w-2xl mx-auto font-medium leading-relaxed animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                  Professional AI image enhancement and generation. Restore details, upscale quality, and reimagine your photos with LYNX.
+                <p className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto font-medium leading-relaxed animate-fade-in drop-shadow-sm" style={{ animationDelay: '0.4s' }}>
+                  Professional AI image enhancement and generation. Restore details, upscale quality, and reimagine your photos with <span className="font-bold">Kiko</span>.
                 </p>
 
                 {/* Processing Overlay for Generation */}
                 {isProcessing && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-black/80 backdrop-blur-md">
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
                       <div className="flex flex-col items-center">
-                          <span className="loading loading-spinner loading-lg text-apple-blue mb-4"></span>
-                          <span className="text-lg font-bold text-apple-shark dark:text-white mb-2">{statusMessage}</span>
-                          <div className="w-64 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                              <div className="h-full bg-apple-blue transition-all duration-300" style={{ width: `${progress}%` }} />
+                          <span className="loading loading-spinner loading-lg text-white mb-4"></span>
+                          <span className="text-lg font-bold text-white mb-2">{statusMessage}</span>
+                          <div className="w-64 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                              <div className="h-full bg-white transition-all duration-300" style={{ width: `${progress}%` }} />
                           </div>
                       </div>
                   </div>
@@ -514,20 +530,32 @@ const AppContent: React.FC = () => {
                 {/* Main Action Card */}
                 <div className="w-full max-w-[500px] mx-auto animate-fade-in relative" style={{ animationDelay: '0.6s' }}>
                   
-                  {/* Mode Tabs */}
-                  <div className="flex justify-center mb-6 bg-gray-200/50 dark:bg-white/5 p-1 rounded-2xl w-max mx-auto backdrop-blur-sm">
-                      <button 
-                        onClick={() => setLandingTab('enhance')}
-                        className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${landingTab === 'enhance' ? 'bg-white dark:bg-white/10 text-apple-shark dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-                      >
-                         Enhance Image
-                      </button>
-                      <button 
-                        onClick={() => setLandingTab('generate')}
-                        className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${landingTab === 'generate' ? 'bg-white dark:bg-white/10 text-apple-shark dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-                      >
-                         Generate Image
-                      </button>
+                  {/* Mode Tabs - Glass Pill Style */}
+                  <div className="flex justify-center mb-8">
+                      <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg border border-white/30 rounded-full p-1.5 shadow-2xl">
+                          <button 
+                            onClick={() => setLandingTab('enhance')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-full transition-all duration-300 font-medium text-sm ${
+                              landingTab === 'enhance'
+                                ? 'bg-white text-blue-600 shadow-lg scale-105' 
+                                : 'text-white hover:bg-white/20'
+                            }`}
+                          >
+                            <ImageIcon className="w-4 h-4" />
+                            Enhance
+                          </button>
+                          <button 
+                            onClick={() => setLandingTab('generate')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-full transition-all duration-300 font-medium text-sm ${
+                              landingTab === 'generate'
+                                ? 'bg-white text-blue-600 shadow-lg scale-105' 
+                                : 'text-white hover:bg-white/20'
+                            }`}
+                          >
+                            <Wand2 className="w-4 h-4" />
+                            Generate
+                          </button>
+                      </div>
                   </div>
 
                   {landingTab === 'enhance' ? (
@@ -536,15 +564,15 @@ const AppContent: React.FC = () => {
                         onBatchSelect={handleBatchSelect} 
                      />
                   ) : (
-                     // Generation UI
-                     <div className="bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl rounded-[32px] shadow-2xl p-6 border border-white/20 dark:border-white/5">
+                     // Generation UI - Glass Card
+                     <div className="bg-white/20 backdrop-blur-lg border border-white/30 rounded-[32px] shadow-2xl p-6">
                         <div className="mb-4">
-                           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block flex items-center gap-2">
-                              <Sparkles className="w-3.5 h-3.5 text-apple-blue" />
+                           <label className="text-xs font-bold text-white/90 uppercase tracking-wider mb-2 block flex items-center gap-2">
+                              <Sparkles className="w-3.5 h-3.5 text-white" />
                               Describe your imagination
                            </label>
                            <textarea 
-                              className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-2xl p-4 text-apple-shark dark:text-white focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue outline-none resize-none min-h-[120px] text-base"
+                              className="w-full bg-white/10 dark:bg-black/20 border border-white/20 rounded-2xl p-4 text-white placeholder-white/50 focus:ring-2 focus:ring-white/50 focus:border-white/50 outline-none resize-none min-h-[120px] text-base"
                               placeholder="A futuristic city with flying cars at sunset, cyberpunk style..."
                               value={genPrompt}
                               onChange={(e) => setGenPrompt(e.target.value)}
@@ -553,13 +581,13 @@ const AppContent: React.FC = () => {
 
                         {/* Aspect Ratio Selector */}
                         <div className="mb-4">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Aspect Ratio</label>
+                            <label className="text-[10px] font-bold text-white/80 uppercase tracking-wider mb-2 block">Aspect Ratio</label>
                             <div className="grid grid-cols-5 gap-2">
                                 {[AspectRatio.SQUARE, AspectRatio.PORTRAIT, AspectRatio.LANDSCAPE, AspectRatio.WIDE, AspectRatio.TALL].map((ratio) => (
                                     <button
                                         key={ratio}
                                         onClick={() => setConfig(prev => ({ ...prev, aspectRatio: ratio }))}
-                                        className={`flex flex-col items-center justify-center py-2 rounded-xl border transition-all ${config.aspectRatio === ratio ? 'bg-apple-shark dark:bg-white text-white dark:text-black border-transparent shadow-sm' : 'bg-gray-50 dark:bg-white/5 border-transparent text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'}`}
+                                        className={`flex flex-col items-center justify-center py-2 rounded-xl border transition-all ${config.aspectRatio === ratio ? 'bg-white text-blue-600 border-transparent shadow-md' : 'bg-white/10 border-transparent text-white/70 hover:bg-white/20'}`}
                                     >
                                         {getRatioIcon(ratio)}
                                         <span className="text-[9px] font-bold mt-1">{ratio}</span>
@@ -568,28 +596,25 @@ const AppContent: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Image Count Selector - IMPROVED UI */}
-                        <div className="bg-gray-50 dark:bg-black/20 rounded-xl p-4 border border-gray-100 dark:border-white/5 mb-4">
+                        {/* Image Count Selector */}
+                        <div className="bg-white/10 dark:bg-black/20 rounded-xl p-4 border border-white/20 mb-4">
                            <div className="flex justify-between items-center mb-4">
-                               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                               <label className="text-[10px] font-bold text-white/90 uppercase tracking-wider flex items-center gap-1.5">
                                    <Hash className="w-3.5 h-3.5" />
                                    Count
                                </label>
-                               <span className="text-[10px] font-bold text-apple-shark dark:text-white bg-white dark:bg-white/10 px-2 py-1 rounded-md border border-gray-100 dark:border-white/5">
+                               <span className="text-[10px] font-bold text-blue-600 bg-white px-2 py-1 rounded-md border border-white/20">
                                    {config.imageCount} / 5
                                </span>
                            </div>
                            
                            <div className="relative h-8 flex items-center select-none">
-                               {/* Track */}
-                               <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
+                               <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-white/20 rounded-full overflow-hidden">
                                    <div 
-                                     className="h-full bg-apple-shark dark:bg-white transition-all duration-300 ease-out"
+                                     className="h-full bg-white transition-all duration-300 ease-out"
                                      style={{ width: `${(config.imageCount - 1) * 25}%` }}
                                    />
                                </div>
-                               
-                               {/* Steps */}
                                <div className="absolute left-0 right-0 flex justify-between px-0.5">
                                    {[1, 2, 3, 4, 5].map((num) => (
                                       <button
@@ -598,8 +623,8 @@ const AppContent: React.FC = () => {
                                         className={`
                                             w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-200 border-2
                                             ${config.imageCount >= num 
-                                                ? 'bg-apple-shark dark:bg-white text-white dark:text-black border-apple-shark dark:border-white scale-110 shadow-sm' 
-                                                : 'bg-white dark:bg-[#1C1C1E] text-gray-400 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/30'}
+                                                ? 'bg-white text-blue-600 border-white scale-110 shadow-sm' 
+                                                : 'bg-white/10 text-white/50 border-white/10 hover:border-white/30'}
                                         `}
                                       >
                                           {num}
@@ -612,9 +637,9 @@ const AppContent: React.FC = () => {
                         {/* Reference Upload */}
                         <div className="mb-6">
                             <div className="flex justify-between items-center mb-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Reference (Optional)</label>
+                                <label className="text-xs font-bold text-white/80 uppercase tracking-wider">Reference (Optional)</label>
                                 {genReference && (
-                                    <button onClick={() => setGenReference(undefined)} className="text-[10px] text-red-500 hover:text-red-600 font-bold flex items-center gap-1">
+                                    <button onClick={() => setGenReference(undefined)} className="text-[10px] text-white hover:text-red-200 font-bold flex items-center gap-1 bg-red-500/50 px-2 py-0.5 rounded-full">
                                         <X className="w-3 h-3" /> Remove
                                     </button>
                                 )}
@@ -623,16 +648,16 @@ const AppContent: React.FC = () => {
                             {!genReference ? (
                                 <button 
                                     onClick={() => genRefInputRef.current?.click()}
-                                    className="w-full py-2.5 border border-dashed border-gray-300 dark:border-white/10 rounded-xl flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                                    className="w-full py-2.5 border border-dashed border-white/30 rounded-xl flex items-center justify-center gap-2 text-white/70 hover:bg-white/10 transition-colors"
                                 >
                                     <Upload className="w-4 h-4" />
                                     <span className="text-xs font-bold">Upload Reference Image</span>
                                 </button>
                             ) : (
-                                <div className="relative h-16 w-full bg-gray-100 dark:bg-black/30 rounded-xl overflow-hidden group">
+                                <div className="relative h-16 w-full bg-black/20 rounded-xl overflow-hidden group border border-white/20">
                                     <img src={genReference} className="w-full h-full object-contain" alt="Reference" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <button onClick={() => genRefInputRef.current?.click()} className="text-white text-[10px] font-bold bg-black/50 px-2 py-1 rounded-lg backdrop-blur-md">Change</button>
+                                        <button onClick={() => genRefInputRef.current?.click()} className="text-white text-[10px] font-bold bg-white/20 border border-white/20 px-2 py-1 rounded-lg backdrop-blur-md">Change</button>
                                     </div>
                                 </div>
                             )}
@@ -642,7 +667,7 @@ const AppContent: React.FC = () => {
                         <button 
                             onClick={handleGenerateImage}
                             disabled={!genPrompt.trim()}
-                            className="w-full py-4 bg-apple-shark dark:bg-white text-white dark:text-black rounded-2xl font-bold text-base shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-4 bg-white text-blue-600 rounded-2xl font-bold text-base shadow-lg hover:scale-[1.01] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <Wand2 className="w-5 h-5" />
                             Generate Image
@@ -651,63 +676,116 @@ const AppContent: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Right Side: Details for Desktop - Glass Card */}
+              <div className="hidden lg:block w-80 mt-12 animate-fade-in" style={{ animationDelay: '0.8s' }}>
+                   <div className="bg-white/20 dark:bg-black/20 backdrop-blur-2xl border border-white/30 dark:border-white/10 rounded-[32px] p-6 sticky top-32 shadow-lg">
+                       <h3 className="font-syne text-xl font-bold text-white mb-4">Why Kiko?</h3>
+                       <div className="space-y-6">
+                           <div className="flex gap-4">
+                               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white border border-white/10">
+                                   <Zap className="w-5 h-5" />
+                               </div>
+                               <div>
+                                   <h4 className="text-sm font-bold text-white">Gemini 3 Powered</h4>
+                                   <p className="text-xs text-white/80 leading-relaxed mt-1">
+                                       Utilizing Google's latest multimodal models for unparalleled image understanding and manipulation.
+                                   </p>
+                               </div>
+                           </div>
+
+                           <div className="flex gap-4">
+                               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white border border-white/10">
+                                   <Wand2 className="w-5 h-5" />
+                               </div>
+                               <div>
+                                   <h4 className="text-sm font-bold text-white">Magic Edit</h4>
+                                   <p className="text-xs text-white/80 leading-relaxed mt-1">
+                                       Use natural language to add, remove, or modify elements. Just describe what you want.
+                                   </p>
+                               </div>
+                           </div>
+
+                           <div className="flex gap-4">
+                               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white border border-white/10">
+                                   <Layers className="w-5 h-5" />
+                               </div>
+                               <div>
+                                   <h4 className="text-sm font-bold text-white">Batch Studio</h4>
+                                   <p className="text-xs text-white/80 leading-relaxed mt-1">
+                                       Process dozens of images at once. Upscale, restore, or style transfer entire albums instantly.
+                                   </p>
+                               </div>
+                           </div>
+                       </div>
+
+                       <div className="mt-8 pt-6 border-t border-white/20">
+                           <p className="text-[10px] text-white/60 text-center font-mono">
+                               V 2.5.0 • BUILT WITH GOOGLE GEN AI SDK
+                           </p>
+                       </div>
+                   </div>
+              </div>
             </div>
           )}
 
           {mode === 'single' && (
-            // --- SINGLE MODE WORKSPACE (GLASSY BLURRY CARD) ---
+            // --- SINGLE MODE WORKSPACE - HEAVY GLASS ---
             <div className="max-w-2xl mx-auto animate-fade-in">
-              <div className="rounded-[32px] overflow-hidden bg-white/70 dark:bg-[#1E1E1E]/60 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-2xl">
-                  
+              <div className="rounded-[32px] overflow-hidden bg-white/30 dark:bg-black/30 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl">
                   {/* Card Header */}
-                  <div className="px-6 py-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/5">
+                  <div className="px-6 py-4 flex items-center justify-between border-b border-white/20">
                     <div className="flex items-center gap-3">
-                        <button onClick={handleReset} className="p-2 hover:bg-gray-100/50 dark:hover:bg-white/10 rounded-full transition-colors">
-                          <ArrowLeft className="w-5 h-5 text-gray-500 dark:text-gray-300" />
+                        <button onClick={requestDiscard} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                          <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
                         </button>
-                        <h2 className="text-lg font-bold text-apple-shark dark:text-white">Image Editor</h2>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Image Editor</h2>
                     </div>
                     
                     <div className="flex items-center gap-2 relative" ref={menuRef}>
                         <button 
                             onClick={() => setShowMenu(!showMenu)} 
-                            className={`p-2 rounded-full transition-all ${showMenu ? 'bg-gray-100 dark:bg-white/10' : 'hover:bg-gray-100/50 dark:hover:bg-white/10'}`}
+                            className={`p-2 rounded-full transition-all ${showMenu ? 'bg-white/20' : 'hover:bg-white/10'}`}
                         >
-                            <MoreHorizontal className="w-5 h-5 text-gray-500 dark:text-gray-300" />
+                            <MoreHorizontal className="w-5 h-5 text-gray-800 dark:text-white" />
                         </button>
                         
-                        {/* 3-Dot Dropdown Menu */}
+                        {/* 3-Dot Dropdown Menu - Glass */}
                         {showMenu && (
-                            <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-[#252525] rounded-xl shadow-xl border border-gray-100 dark:border-white/10 overflow-hidden z-[60] animate-fade-in origin-top-right">
+                            <div className="absolute right-0 top-full mt-2 w-48 bg-white/80 dark:bg-black/80 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 overflow-hidden z-[60] animate-fade-in origin-top-right">
                                 <div className="p-1">
-                                    <button onClick={handleDownloadCurrent} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 font-medium">
+                                    <button onClick={() => replaceInputRef.current?.click()} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/20 flex items-center gap-2 text-sm text-gray-800 dark:text-white font-medium">
+                                        <RefreshCcw className="w-4 h-4" />
+                                        Replace Image
+                                    </button>
+                                    
+                                    <button onClick={handleDownloadCurrent} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/20 flex items-center gap-2 text-sm text-gray-800 dark:text-white font-medium">
                                         <Download className="w-4 h-4" />
                                         Download Original
                                     </button>
-                                    <div className="h-px bg-gray-100 dark:bg-white/5 my-1" />
-                                    <button onClick={handleReset} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
+                                    <div className="h-px bg-white/20 my-1" />
+                                    <button onClick={requestDiscard} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-red-500/10 flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
                                         <Trash2 className="w-4 h-4" />
                                         Discard Project
                                     </button>
                                 </div>
                             </div>
                         )}
+                        <input type="file" ref={replaceInputRef} className="hidden" accept="image/*" onChange={handleReplaceImage} />
                     </div>
                   </div>
 
-                  {/* Main Content Area */}
-                  <div className="relative w-full bg-gray-50/30 dark:bg-black/20 min-h-[300px] flex items-center justify-center">
+                  {/* Main Content Area - Transparent */}
+                  <div className="relative w-full bg-white/10 dark:bg-black/10 min-h-[300px] flex items-center justify-center">
                     
                     {/* Processing State */}
                     {isProcessing && !processedResult && (
-                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/60 backdrop-blur-sm">
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/40 dark:bg-black/40 backdrop-blur-md">
                             <div className="flex flex-col items-center">
-                                {/* NEW LOADER */}
-                                <span className="loading loading-spinner loading-lg text-apple-blue mb-3"></span>
-                                
-                                <span className="text-sm font-semibold text-apple-shark dark:text-white">{statusMessage}</span>
-                                <div className="w-48 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mt-4 overflow-hidden">
-                                    <div className="h-full bg-apple-blue transition-all duration-300" style={{ width: `${progress}%` }} />
+                                <span className="loading loading-spinner loading-lg text-blue-600 dark:text-white mb-3"></span>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">{statusMessage}</span>
+                                <div className="w-48 h-1 bg-white/30 rounded-full mt-4 overflow-hidden">
+                                    <div className="h-full bg-blue-600 dark:bg-white transition-all duration-300" style={{ width: `${progress}%` }} />
                                 </div>
                                 <button onClick={handleCancelSingle} className="mt-4 text-xs text-red-500 hover:text-red-600 font-bold uppercase tracking-wide">Cancel</button>
                             </div>
@@ -728,29 +806,18 @@ const AppContent: React.FC = () => {
                               />
                           ) : (
                               <div className="w-full flex justify-center py-4">
-                                  {/* Magic Edit Mode - MaskEditor with Toggle */}
-                                  {isMagicEdit && activeImage ? (
-                                      <MaskEditor 
-                                          imageUrl={activeImage} 
-                                          maskBase64={config.maskImage}
-                                          onMaskChange={handleMaskChange}
-                                          isActive={isMaskingMode}
-                                          onToggle={() => setIsMaskingMode(!isMaskingMode)}
-                                      />
-                                  ) : (
-                                      <img 
-                                          src={activeImage || ''} 
-                                          alt="Original" 
-                                          className="w-full h-auto max-h-[70vh] object-contain"
-                                      />
-                                  )}
+                                  <img 
+                                      src={activeImage || ''} 
+                                      alt="Original" 
+                                      className="w-full h-auto max-h-[70vh] object-contain"
+                                  />
                               </div>
                           )}
                     </div>
                   </div>
 
-                  {/* Bottom Toolbar */}
-                  <div className="bg-white/50 dark:bg-[#1E1E1E]/50 p-4 border-t border-gray-200/50 dark:border-white/5 backdrop-blur-sm">
+                  {/* Bottom Toolbar - Glass */}
+                  <div className="bg-white/20 dark:bg-black/20 p-4 border-t border-white/20 backdrop-blur-sm">
                     <EnhancementControls 
                           config={config} 
                           onChange={setConfig} 
@@ -766,33 +833,29 @@ const AppContent: React.FC = () => {
             </div>
           )}
 
+          {/* Batch Mode Workspace - Glass */}
           {mode === 'batch' && (
-            // --- BATCH MODE WORKSPACE ---
             <div className="max-w-5xl mx-auto animate-fade-in">
-              <div className="rounded-[32px] overflow-hidden bg-white/70 dark:bg-[#1E1E1E]/60 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-2xl">
-                  
+              <div className="rounded-[32px] overflow-hidden bg-white/30 dark:bg-black/30 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-2xl">
                   {/* Header */}
-                  <div className="px-6 py-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/5">
+                  <div className="px-6 py-4 flex items-center justify-between border-b border-white/20">
                      <div className="flex items-center gap-3">
-                        <button onClick={handleReset} className="p-2 hover:bg-gray-100/50 dark:hover:bg-white/10 rounded-full transition-colors">
-                          <ArrowLeft className="w-5 h-5 text-gray-500 dark:text-gray-300" />
+                        <button onClick={requestDiscard} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                          <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-white" />
                         </button>
                         <div>
-                            <h2 className="text-lg font-bold text-apple-shark dark:text-white">Batch Studio</h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Processing {batchQueue.length} images</p>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Batch Studio</h2>
+                            <p className="text-xs text-gray-600 dark:text-gray-300">Processing {batchQueue.length} images</p>
                         </div>
                      </div>
-                     
-                     {/* Batch specific actions could go here */}
                      {isProcessing && (
-                         <button onClick={handleCancelBatch} className="text-xs font-bold text-red-500 hover:text-red-600 px-3 py-1.5 bg-red-50 dark:bg-red-900/10 rounded-full">
+                         <button onClick={handleCancelBatch} className="text-xs font-bold text-red-500 hover:text-red-600 px-3 py-1.5 bg-red-500/10 rounded-full">
                             STOP BATCH
                          </button>
                      )}
                   </div>
 
-                  {/* Batch Queue Content */}
-                  <div className="relative w-full bg-gray-50/30 dark:bg-black/20 min-h-[400px] max-h-[60vh] overflow-hidden">
+                  <div className="relative w-full bg-white/10 dark:bg-black/10 h-[500px] overflow-hidden">
                        <BatchQueue 
                            items={batchQueue}
                            onRemove={handleRemoveBatchItem}
@@ -803,8 +866,7 @@ const AppContent: React.FC = () => {
                        />
                   </div>
 
-                  {/* Shared Controls reused for Batch */}
-                  <div className="bg-white/50 dark:bg-[#1E1E1E]/50 p-4 border-t border-gray-200/50 dark:border-white/5 backdrop-blur-sm">
+                  <div className="bg-white/20 dark:bg-black/20 p-4 border-t border-white/20 backdrop-blur-sm">
                       <EnhancementControls 
                           config={config} 
                           onChange={setConfig} 
@@ -819,8 +881,31 @@ const AppContent: React.FC = () => {
               </div>
             </div>
           )}
+          
+          {/* Discard Confirmation Dialog - Glass */}
+          {showDiscardDialog && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-md animate-fade-in">
+                  <div className="bg-white/60 dark:bg-black/60 backdrop-blur-xl border border-white/40 dark:border-white/10 p-6 rounded-3xl shadow-2xl max-w-sm w-full mx-4">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Discard Project?</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">Are you sure you want to discard your current work? This action cannot be undone.</p>
+                      <div className="flex gap-3">
+                          <button 
+                             onClick={() => setShowDiscardDialog(false)}
+                             className="flex-1 py-2 rounded-xl bg-white/40 dark:bg-white/10 hover:bg-white/60 dark:hover:bg-white/20 text-gray-800 dark:text-white font-medium transition-colors"
+                          >
+                             Keep Editing
+                          </button>
+                          <button 
+                             onClick={confirmDiscardProject}
+                             className="flex-1 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-600 dark:text-red-400 font-medium transition-colors"
+                          >
+                             Discard
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          )}
 
-          {/* Error Toast */}
           {error && (
             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 bg-red-500 text-white rounded-full shadow-lg flex items-center gap-3 animate-slide-up font-medium">
               <AlertCircle className="w-4 h-4" />

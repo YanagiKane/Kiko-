@@ -51,25 +51,27 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect, onBatchSel
   return (
     <div className="w-full max-w-[480px] mx-auto">
       <div 
-        className={`relative group cursor-pointer bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl rounded-[32px] shadow-2xl transition-all duration-300 h-64 flex flex-col items-center justify-center text-center border-2 border-dashed
-        ${isDragging ? 'border-apple-blue bg-blue-50/50 dark:bg-blue-900/10 scale-[1.02]' : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-[#1C1C1E]'}`}
+        className={`relative group cursor-pointer bg-white/20 backdrop-blur-lg border border-white/30 rounded-[32px] shadow-2xl transition-all duration-300 h-64 flex flex-col items-center justify-center text-center
+        ${isDragging 
+            ? 'bg-white/40 scale-[1.02] border-white' 
+            : 'hover:bg-white/30 hover:border-white/50'}`}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <div className="w-20 h-20 rounded-3xl bg-gray-50 dark:bg-white/5 shadow-inner flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 ease-out">
+        <div className="w-20 h-20 rounded-3xl bg-white/20 shadow-inner flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 ease-out border border-white/20">
             <div className="relative">
-                <ImageIcon className="w-10 h-10 text-apple-blue" />
-                <div className="absolute -bottom-2 -right-2 bg-apple-shark dark:bg-white text-white dark:text-black rounded-full p-1.5 shadow-lg">
+                <ImageIcon className="w-10 h-10 text-white drop-shadow-md" />
+                <div className="absolute -bottom-2 -right-2 bg-white text-blue-600 rounded-full p-1.5 shadow-lg">
                     <Upload className="w-3 h-3" />
                 </div>
             </div>
         </div>
         
         <div className="space-y-2 px-8">
-            <h3 className="text-lg font-bold text-apple-shark dark:text-white">Upload Photos</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+            <h3 className="text-lg font-bold text-white drop-shadow-sm">Upload Photos</h3>
+            <p className="text-sm text-white/70 font-medium">
                 Drag & drop single or multiple files<br/>
                 <span className="text-xs opacity-70">Supports JPG, PNG, WEBP</span>
             </p>
