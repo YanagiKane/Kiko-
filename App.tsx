@@ -8,10 +8,10 @@ import BatchQueue from './components/BatchQueue';
 import SplitText from './components/SplitText';
 import { ThemeProvider } from './components/ThemeContext';
 import { EnhancementConfig, EnhancementType, AspectRatio, ProcessedImage, BatchItem } from './types';
-import { enhanceImage } from './services/geminiService';
+import { enhanceImage, getStoredApiKey, setStoredApiKey } from './services/geminiService';
 import { enhanceWithFal } from './services/falService';
 import { enhanceWithCloudinary } from './services/cloudinaryService';
-import { AlertCircle, X, Home, Download, MoreHorizontal, ArrowLeft, Image as ImageIcon, Trash2, Wand2, Sparkles, Upload, Hash, Layout, Monitor, Instagram, Smartphone, Youtube, RefreshCcw, Zap, Layers } from 'lucide-react';
+import { AlertCircle, X, Home, Download, MoreHorizontal, ArrowLeft, Image as ImageIcon, Trash2, Wand2, Sparkles, Upload, Hash, Layout, Monitor, Instagram, Smartphone, Youtube, RefreshCcw, Zap, Layers, Settings, Key } from 'lucide-react';
 
 // Taglines for Kiko
 const TAGLINES = [
@@ -38,6 +38,8 @@ const AppContent: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiKey, setApiKey] = useState('');
 
   // Tagline State
   const [tagline, setTagline] = useState(TAGLINES[0]);
@@ -60,6 +62,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const random = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
     setTagline(random);
+    setApiKey(getStoredApiKey());
   }, []);
 
   // Click outside to close menu
@@ -72,6 +75,12 @@ const AppContent: React.FC = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleSaveApiKey = () => {
+      setStoredApiKey(apiKey);
+      setShowSettings(false);
+      setError(null);
+  };
 
   const getRatioIcon = (ratio: AspectRatio) => {
     switch(ratio) {
@@ -245,7 +254,12 @@ const AppContent: React.FC = () => {
 
     } catch (err: any) {
         console.error(err);
-        setError(err.message || 'Generation failed.');
+        if (err.message === 'MISSING_API_KEY') {
+            setShowSettings(true);
+            setError("Please enter your Gemini API Key in settings to continue.");
+        } else {
+            setError(err.message || 'Generation failed.');
+        }
     } finally {
         clearInterval(progressInterval);
         setIsProcessing(false);
@@ -315,7 +329,12 @@ const AppContent: React.FC = () => {
     } catch (err: any) {
       if (!cancelSingleRef.current) {
         console.error(err);
-        setError(err.message || 'Failed to process image. Please try again.');
+        if (err.message === 'MISSING_API_KEY') {
+            setShowSettings(true);
+            setError("Please enter your Gemini API Key in settings to continue.");
+        } else {
+            setError(err.message || 'Failed to process image. Please try again.');
+        }
       }
     } finally {
       clearInterval(progressInterval);
@@ -387,6 +406,11 @@ const AppContent: React.FC = () => {
 
       } catch (err: any) {
         if (cancelBatchRef.current) break;
+        if (err.message === 'MISSING_API_KEY') {
+            setShowSettings(true);
+            setError("Please enter your Gemini API Key in settings to continue.");
+            break;
+        }
         setBatchQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'failed', error: err.message || 'Error' } : i));
       }
     }
@@ -486,7 +510,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen relative font-sans transition-colors duration-300 text-gray-900 dark:text-white pb-20">
       
       <div className="relative z-10 min-h-screen flex flex-col">
-        <Header onNavigate={handleNavigate} />
+        <Header onNavigate={handleNavigate} onOpenSettings={() => setShowSettings(true)} />
 
         <main className="flex-grow pt-40 px-4 pb-12">
           
@@ -729,6 +753,8 @@ const AppContent: React.FC = () => {
             </div>
           )}
 
+          {/* ... (Single and Batch Mode code remains largely the same, but inherits new Glass/UI changes from components) ... */}
+
           {mode === 'single' && (
             // --- SINGLE MODE WORKSPACE - HEAVY GLASS ---
             <div className="max-w-2xl mx-auto animate-fade-in">
@@ -904,6 +930,49 @@ const AppContent: React.FC = () => {
                       </div>
                   </div>
               </div>
+          )}
+
+          {/* Settings Modal - Glass */}
+          {showSettings && (
+             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-md animate-fade-in">
+                <div className="bg-white/60 dark:bg-black/60 backdrop-blur-xl border border-white/40 dark:border-white/10 p-6 rounded-3xl shadow-2xl max-w-md w-full mx-4 relative">
+                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/20 transition-colors">
+                      <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                   </button>
+                   
+                   <div className="flex items-center gap-3 mb-6">
+                      <div className="p-3 bg-blue-600 rounded-xl text-white shadow-lg">
+                         <Key className="w-6 h-6" />
+                      </div>
+                      <div>
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">API Settings</h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Configure your Gemini API access</p>
+                      </div>
+                   </div>
+
+                   <div className="mb-6">
+                      <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider mb-2 block">Gemini API Key</label>
+                      <input 
+                         type="password" 
+                         value={apiKey}
+                         onChange={(e) => setApiKey(e.target.value)}
+                         placeholder="Enter your API Key..."
+                         className="w-full bg-white/50 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl p-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-2">
+                         Your API key is stored locally in your browser and is never sent to our servers.
+                         Get your key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google AI Studio</a>.
+                      </p>
+                   </div>
+
+                   <button 
+                      onClick={handleSaveApiKey}
+                      className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg"
+                   >
+                      Save Settings
+                   </button>
+                </div>
+             </div>
           )}
 
           {error && (

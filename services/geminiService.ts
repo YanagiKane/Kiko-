@@ -8,6 +8,7 @@ interface OptimizedPrompts {
 }
 
 const STORAGE_KEY = 'lynx_gemini_usage';
+const API_KEY_STORAGE = 'GEMINI_API_KEY';
 
 export const getDailyUsage = (): number => {
     if (typeof window === 'undefined') return 0;
@@ -33,6 +34,19 @@ const incrementDailyUsage = () => {
     const today = new Date().toDateString();
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: today, count: current + 1 }));
     window.dispatchEvent(new Event('geminiUsageUpdated'));
+};
+
+export const getStoredApiKey = (): string => {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem(API_KEY_STORAGE) || '';
+    }
+    return '';
+};
+
+export const setStoredApiKey = (key: string) => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(API_KEY_STORAGE, key.trim());
+    }
 };
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -174,8 +188,14 @@ export const enhanceImage = async (
   try {
     onStatusUpdate?.("Initializing...");
     
-    // Using process.env.API_KEY strictly as per guidelines
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Check for API Key in localStorage first, then env
+    const apiKey = getStoredApiKey() || process.env.API_KEY;
+
+    if (!apiKey) {
+        throw new Error("MISSING_API_KEY");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
     
     // Clean base64 string if present
     const cleanBase64 = imageBase64 ? imageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '') : '';

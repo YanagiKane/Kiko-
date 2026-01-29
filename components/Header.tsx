@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Menu, X, Home, Sparkles, LayoutGrid, Monitor, Moon, Sun } from 'lucide-react';
+import { Menu, X, Home, Sparkles, LayoutGrid, Monitor, Moon, Sun, Settings } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 
 interface HeaderProps {
     onNavigate: (page: string) => void;
+    onOpenSettings: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigate, onOpenSettings }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeLink, setActiveLink] = useState('home');
   const { theme, setTheme } = useTheme();
@@ -77,6 +78,14 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
           </button>
 
           <button 
+            onClick={onOpenSettings}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors border border-white/10"
+            title="Settings"
+          >
+             <Settings size={18} />
+          </button>
+
+          <button 
             onClick={() => handleLinkClick('home')}
             className="bg-white text-blue-600 px-6 py-2.5 rounded-full hover:bg-blue-50 transition-all duration-300 font-black text-xs flex items-center gap-2 shadow-lg tracking-wide uppercase"
           >
@@ -92,6 +101,12 @@ const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
             >
                 {getThemeIcon()}
+            </button>
+             <button 
+                onClick={onOpenSettings}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+                <Settings size={18} />
             </button>
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
