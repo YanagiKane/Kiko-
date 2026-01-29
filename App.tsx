@@ -314,7 +314,10 @@ const AppContent: React.FC = () => {
         if (err.message === 'MISSING_API_KEY') {
             setIsAuthenticated(false);
         } else {
-            setError(err.message || 'Failed to process image. Please try again.');
+            const rawMsg = err.message || 'Failed to process image. Please try again.';
+            // Clean up potentially huge JSON error messages from UI
+            const displayMsg = rawMsg.length > 150 ? "API Error (Check Console for details)" : rawMsg;
+            setError(displayMsg);
         }
       }
     } finally {

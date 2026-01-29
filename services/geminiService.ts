@@ -101,6 +101,7 @@ const processSingleRequest = async (
   modelId: string, 
   contents: any, 
   imageConfig: any,
+  onStatusUpdate?: (msg: string) => void,
   retries = 3
 ): Promise<string> => {
     
@@ -117,14 +118,6 @@ const processSingleRequest = async (
 
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-            // Exponential Backoff with Jitter
-            if (attempt > 0) {
-                // Wait 2s, 4s, 8s... + random jitter
-                const backoffMs = Math.pow(2, attempt) * 2000; 
-                const jitter = Math.random() * 1000;
-                await wait(backoffMs + jitter);
-            }
-
             const response = await ai.models.generateContent({
               model: modelId,
               contents: contents,
@@ -156,20 +149,41 @@ const processSingleRequest = async (
 
         } catch (e: any) {
             lastError = e;
-            const msg = e.message || '';
+            
+            // Normalize error message
+            let msg = e.message || '';
+            if (typeof e === 'string') msg = e;
+            if (e.error && e.error.message) msg = e.error.message;
+            if (e.toString() === '[object Object]') msg = JSON.stringify(e);
+
             const status = e.status || 0;
             
-            // Critical: Detect Rate Limiting (429) or Server Overload (503)
-            const isRateLimit = msg.includes('429') || status === 429 || msg.includes('quota') || msg.includes('Resource has been exhausted');
+            // Detection
+            const isRateLimit = msg.includes('429') || status === 429 || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
             const isServerOverload = msg.includes('503') || status === 503 || msg.includes('Overloaded');
 
-            if (isRateLimit || isServerOverload) {
-                console.warn(`Attempt ${attempt + 1}/${retries} failed: Rate Limit/Overload. Retrying...`);
-                // If it's a rate limit, force a longer wait on next loop
-                if (attempt < retries) {
-                   await wait(5000); // Add extra 5s base penalty for 429
-                   continue;
+            if ((isRateLimit || isServerOverload) && attempt < retries) {
+                // Smart Retry: Extract wait time from error message if available
+                // e.g. "Please retry in 57.61s"
+                let waitTime = 5000; // Default 5s
+                
+                const timeMatch = msg.match(/retry in ([\d\.]+)s/);
+                if (timeMatch && timeMatch[1]) {
+                     // Add slight buffer to the suggested wait time
+                     waitTime = (parseFloat(timeMatch[1]) * 1000) + 1000;
+                } else {
+                     // Exponential backoff if no specific time
+                     waitTime = Math.pow(2, attempt) * 4000; 
                 }
+
+                // Cap max wait to 65 seconds
+                waitTime = Math.min(waitTime, 65000);
+
+                console.warn(`Attempt ${attempt + 1}/${retries} failed. Retrying in ${Math.ceil(waitTime/1000)}s...`);
+                onStatusUpdate?.(`Rate limited. Retrying in ${Math.ceil(waitTime/1000)}s...`);
+                
+                await wait(waitTime);
+                continue;
             }
             
             // If it's a client error (400, 403, 404), fail immediately
@@ -177,8 +191,11 @@ const processSingleRequest = async (
                 throw e;
             }
             
-            // For other errors, retry if attempts left
-            if (attempt < retries) continue;
+            // For other generic errors, standard retry
+            if (attempt < retries) {
+                 await wait(2000);
+                 continue;
+            }
         }
     }
     throw lastError;
@@ -214,9 +231,14 @@ export const enhanceImage = async (
     // Optimize Prompt
     if (userPromptText && (isEdit || isVariation || isGeneration)) {
         onStatusUpdate?.("Optimizing prompt...");
-        const optimized = await optimizeUserPrompt(ai, userPromptText, hasReference);
-        userPromptText = optimized.refinedPrompt;
-        if (!negativePromptText) negativePromptText = optimized.autoNegativePrompt;
+        // We wrap this in a try/catch so prompt optimization failure doesn't block generation
+        try {
+            const optimized = await optimizeUserPrompt(ai, userPromptText, hasReference);
+            userPromptText = optimized.refinedPrompt;
+            if (!negativePromptText) negativePromptText = optimized.autoNegativePrompt;
+        } catch (promptError) {
+            console.warn("Prompt optimization skipped due to error", promptError);
+        }
     }
     
     const instructions = config.types.map(t => ENHANCEMENT_PROMPTS[t]).join(" ");
@@ -260,15 +282,17 @@ export const enhanceImage = async (
     // Handle Multiple Images - SERIALIZED to prevent Rate Limits
     const count = (isEdit || isVariation || isGeneration) ? (config.imageCount || 1) : 1;
     const results: string[] = [];
+    
+    onStatusUpdate?.("Processing...");
 
     for (let i = 0; i < count; i++) {
         if (count > 1) onStatusUpdate?.(`Generating image ${i + 1} of ${count}...`);
         
         try {
             // Wait a bit between serial requests to be kind to the API
-            if (i > 0) await wait(1500); 
+            if (i > 0) await wait(2000); 
             
-            const result = await processSingleRequest(ai, modelId, contents, imageConfig);
+            const result = await processSingleRequest(ai, modelId, contents, imageConfig, onStatusUpdate);
             if (result) results.push(result);
         } catch (e: any) {
             console.error(`Variation ${i + 1} failed:`, e);
@@ -286,6 +310,13 @@ export const enhanceImage = async (
     if (error.message?.includes("API_KEY")) {
         throw new Error("MISSING_API_KEY");
     }
-    throw new Error(error.message || "Failed to process image.");
+    
+    // Improved user-facing error message
+    let displayMsg = error.message || "Failed to process image.";
+    if (displayMsg.includes('429') || displayMsg.includes('quota') || displayMsg.includes('RESOURCE_EXHAUSTED')) {
+         displayMsg = "Google API Daily Quota Exceeded. Please try again tomorrow or use a different API key.";
+    }
+    
+    throw new Error(displayMsg);
   }
 };
